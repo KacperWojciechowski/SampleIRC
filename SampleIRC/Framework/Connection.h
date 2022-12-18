@@ -22,7 +22,7 @@ namespace IRC
 			boost::asio::ip::tcp::socket soc, 
 			ThreadSafeQueue<IdentifyingMessage<T>>& queueIn)
 			: asioContext(context),
-			socket(soc),
+			socket(std::move(soc)),
 			inQueue(queueIn),
 			sender(s)
 		{
@@ -54,7 +54,7 @@ namespace IRC
 			if (sender == Sender::Server && socket.is_open())
 			{
 				user_id = uid;
-				read_head();
+				read_header();
 			}
 		}
 
@@ -91,7 +91,7 @@ namespace IRC
 		auto send(const Message<T>& msg) -> void
 		{
 			boost::asio::post(asioContext,
-				[thism & msg]() -> void
+				[this, &msg]() -> void
 				{
 					// if the out queue is empty, it's safe to assume no outgoing transmission is happening
 					bool writingRoutineIdle = outQueue.empty();
@@ -107,7 +107,7 @@ namespace IRC
 		// asynchronically read header
 		auto read_header() -> void
 		{
-			boost::asio::async_read(socket, boost::asio::buffer(tempMsg.header, sizeof(Header<T>)),
+			boost::asio::async_read(socket, boost::asio::buffer(&tempMsg.header, sizeof(Header<T>)),
 				[this](std::error_code error, std::size_t length)
 				{
 					if (!error)
@@ -128,7 +128,7 @@ namespace IRC
 					}
 					else
 					{
-						std::cout << "[" << id << "] read header failed\n";
+						std::cout << "[" << user_id << "] read header failed\n";
 						socket.close();
 					}
 				});
@@ -146,7 +146,7 @@ namespace IRC
 					}
 					else
 					{
-						std::cout << "[" << id << "] read body failed\n";
+						std::cout << "[" << user_id << "] read body failed\n";
 						socket.close();
 					}
 				});
@@ -179,7 +179,7 @@ namespace IRC
 					}
 					else
 					{
-						std::cout << "[" << id << "] write header failed\n";
+						std::cout << "[" << user_id << "] write header failed\n";
 						socket.close();
 					}
 				});
@@ -204,12 +204,26 @@ namespace IRC
 					}
 					else
 					{
-						std::cout << "[" << id << "] write body failed\n";
+						std::cout << "[" << user_id << "] write body failed\n";
 						socket.close();
 					}
 				});
 		}
 		
+		void push_to_inQueue()
+		{
+			if (sender == Sender::Server)
+			{
+				inQueue.push_back({ this->shared_from_this(), tempMsg });
+			}
+			else
+			{
+				inQueue.push_back({ nullptr, tempMsg });
+			}
+
+			read_header();
+		}
+
 	protected:
 		boost::asio::ip::tcp::socket socket;
 		boost::asio::io_context& asioContext;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Common.h"
+
 #include <mutex>
 #include <deque>
 
