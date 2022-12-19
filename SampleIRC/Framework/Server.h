@@ -1,175 +1,298 @@
-#pragma once
+﻿/*
+	MMO Client/Server Framework using ASIO
+	"Happy Birthday Mrs Javidx9!" - javidx9
 
-#include <iostream>
-#include <limits>
-#include <cstdint>
-#include <thread>
+	Videos:
+	Part #1: https://youtu.be/2hNdkYInj4g
+	Part #2: https://youtu.be/UbjxGvrDrbw
+
+	License (OLC-3)
+	~~~~~~~~~~~~~~~
+
+	Copyright 2018 - 2020 OneLoneCoder.com
+
+	Redistribution and use in source and binary forms, with or without
+	modification, are permitted provided that the following conditions
+	are met:
+
+	1. Redistributions or derivations of source code must retain the above
+	copyright notice, this list of conditions and the following disclaimer.
+
+	2. Redistributions or derivative works in binary form must reproduce
+	the above copyright notice. This list of conditions and the following
+	disclaimer must be reproduced in the documentation and/or other
+	materials provided with the distribution.
+
+	3. Neither the name of the copyright holder nor the names of its
+	contributors may be used to endorse or promote products derived
+	from this software without specific prior written permission.
+
+	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+	"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+	LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+	A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+	HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+	SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+	LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+	DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+	THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+	Links
+	~~~~~
+	YouTube:	https://www.youtube.com/javidx9
+	Discord:	https://discord.gg/WhwHUMV
+	Twitter:	https://www.twitter.com/javidx9
+	Twitch:		https://www.twitch.tv/javidx9
+	GitHub:		https://www.github.com/onelonecoder
+	Homepage:	https://www.onelonecoder.com
+
+	Author
+	~~~~~~
+	David Barr, aka javidx9, �OneLoneCoder 2019, 2020
+
+*/
+
+#pragma once
 
 #include "Common.h"
 #include "ThreadSafeQueue.h"
-#include "Connection.h"
 #include "Message.h"
+#include "Connection.h"
 
-namespace IRC
+namespace olc
 {
-	template<typename T>
-	class ServerInterface
+	namespace net
 	{
-	public:
-		ServerInterface(uint16_t port)
-			: asioAcceptor(asioContext, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
-		{}
-
-		virtual ~ServerInterface()
+		template<typename T>
+		class server_interface
 		{
-			Stop();
-		}
+		public:
+			// Create a server, ready to listen on specified port
+			server_interface(uint16_t port)
+				: m_asioAcceptor(m_asioContext, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
+			{
 
-		auto Start() -> bool
-		{
-			try
-			{
-				WaitForClientConnection();
-				threadContext = std::thread([this]() {asioContext.run(); });
-			}
-			catch (std::exception& e)
-			{
-				std::cerr << "[Server] Exception: " << e.what() << "\n";
-				return false;
 			}
 
-			std::cout << "[Server] Started!\n";
-			return true;
-		}
-
-		auto Stop()
-		{
-			asioContext.stop();
-
-			if (threadContext.joinable())
+			virtual ~server_interface()
 			{
-				threadContext.join();
+				// May as well try and tidy up
+				Stop();
 			}
-			std::cout << "[Server] Stopped!\n";
-		}
 
-		auto acceptSocket(boost::asio::ip::tcp::socket& socket) -> std::shared_ptr<Connection<T>>
-		{
-			std::cout << "[Server] New Connection: " << socket.remote_endpoint() << "\n";
-			std::shared_ptr<Connection<T>> con =
-				std::make_shared<Connection<T>>(Connection<T>::Sender::Client,
-					asioContext, std::move(socket), inMessagesQueue);
-			return con;
-		}
-
-		auto acceptConnection(std::shared_ptr<Connection<T>> connection) -> void
-		{
-			if (OnClientConnect(connection))
+			// Starts the server!
+			bool Start()
 			{
-				connections.push_back(std::move(connection));
-				connections.back()->connect_to_client(IDCounter++);
-				std::cout << "[" << connections.back()->get_user_ID() << "] Approved\n";
-			}
-			else
-			{
-				std::cout << "[" << connections.back()->get_user_ID() << "] Denied\n";
-			}
-		}
-
-		auto WaitForClientConnection() -> void
-		{
-			asioAcceptor.async_accept(
-				[this](std::error_code ec, boost::asio::ip::tcp::socket socket)
+				try
 				{
-					if (not ec)
+					// Issue a task to the asio context - This is important
+					// as it will prime the context with "work", and stop it
+					// from exiting immediately. Since this is a server, we 
+					// want it primed ready to handle clients trying to
+					// connect.
+					WaitForClientConnection();
+
+					// Launch the asio context in its own thread
+					m_threadContext = std::thread([this]() { m_asioContext.run(); });
+				}
+				catch (std::exception& e)
+				{
+					// Something prohibited the server from listening
+					std::cerr << "[SERVER] Exception: " << e.what() << "\n";
+					return false;
+				}
+
+				std::cout << "[SERVER] Started!\n";
+				return true;
+			}
+
+			// Stops the server!
+			void Stop()
+			{
+				// Request the context to close
+				m_asioContext.stop();
+
+				// Tidy up the context thread
+				if (m_threadContext.joinable()) m_threadContext.join();
+
+				// Inform someone, anybody, if they care...
+				std::cout << "[SERVER] Stopped!\n";
+			}
+
+			// ASYNC - Instruct asio to wait for connection
+			void WaitForClientConnection()
+			{
+				// Prime context with an instruction to wait until a socket connects. This
+				// is the purpose of an "acceptor" object. It will provide a unique socket
+				// for each incoming connection attempt
+				m_asioAcceptor.async_accept(
+					[this](std::error_code ec, boost::asio::ip::tcp::socket socket)
 					{
-						auto connection = std::move(acceptSocket(socket));
-						acceptConnection(connection);
+						// Triggered by incoming connection request
+						if (!ec)
+						{
+							// Display some useful(?) information
+							std::cout << "[SERVER] New Connection: " << socket.remote_endpoint() << "\n";
+
+							// Create a new connection to handle this client 
+							std::shared_ptr<connection<T>> newconn =
+								std::make_shared<connection<T>>(connection<T>::owner::server,
+									m_asioContext, std::move(socket), m_qMessagesIn);
+
+
+
+							// Give the user server a chance to deny connection
+							if (OnClientConnect(newconn))
+							{
+								// Connection allowed, so add to container of new connections
+								m_deqConnections.push_back(std::move(newconn));
+
+								// And very important! Issue a task to the connection's
+								// asio context to sit and wait for bytes to arrive!
+								m_deqConnections.back()->ConnectToClient(nIDCounter++);
+
+								std::cout << "[" << m_deqConnections.back()->GetID() << "] Connection Approved\n";
+							}
+							else
+							{
+								std::cout << "[-----] Connection Denied\n";
+
+								// Connection will go out of scope with no pending tasks, so will
+								// get destroyed automagically due to the wonder of smart pointers
+							}
+						}
+						else
+						{
+							// Error has occurred during acceptance
+							std::cout << "[SERVER] New Connection Error: " << ec.message() << "\n";
+						}
+
+						// Prime the asio context with more work - again simply wait for
+						// another connection...
+						WaitForClientConnection();
+					});
+			}
+
+			// Send a message to a specific client
+			void MessageClient(std::shared_ptr<connection<T>> client, const message<T>& msg)
+			{
+				// Check client is legitimate...
+				if (client && client->IsConnected())
+				{
+					// ...and post the message via the connection
+					client->Send(msg);
+				}
+				else
+				{
+					// If we cant communicate with client then we may as 
+					// well remove the client - let the server know, it may
+					// be tracking it somehow
+					OnClientDisconnect(client);
+
+					// Off you go now, bye bye!
+					client.reset();
+
+					// Then physically remove it from the container
+					m_deqConnections.erase(
+						std::remove(m_deqConnections.begin(), m_deqConnections.end(), client), m_deqConnections.end());
+				}
+			}
+
+			// Send message to all clients
+			void MessageAllClients(const message<T>& msg, std::shared_ptr<connection<T>> pIgnoreClient = nullptr)
+			{
+				bool bInvalidClientExists = false;
+
+				// Iterate through all clients in container
+				for (auto& client : m_deqConnections)
+				{
+					// Check client is connected...
+					if (client && client->IsConnected())
+					{
+						// ..it is!
+						if (client != pIgnoreClient)
+							client->Send(msg);
 					}
 					else
 					{
-						std::cout << "[Server] Error accepting connection: " << ec.message() << "\n";
+						// The client couldnt be contacted, so assume it has
+						// disconnected.
+						OnClientDisconnect(client);
+						client.reset();
+
+						// Set this flag to then remove dead clients from container
+						bInvalidClientExists = true;
 					}
-
-					WaitForClientConnection();
 				}
-			);
-		}
 
-		auto Message(std::shared_ptr<Connection<T>> client, const Message<T>& msg)
-		{
-			if (!attemptSending(client, msg))
-				connections.erase(
-					std::remove(connections.begin(), connections.end(), client), connections.end()
-				);
-		}
-
-		auto processDisconnetion(std::shared_ptr<Connection<T>>& client)
-		{
-			OnClientDisconnect(client);
-			client.reset();
-		}
-
-		auto attemptSending(std::shared_ptr<Connection<T>>& client, const IRC::Message<T>& msg)
-		{
-			if (client && client->is_connected())
-			{
-				client->send(msg);
-				return true;
+				// Remove dead clients, all in one go - this way, we dont invalidate the
+				// container as we iterated through it.
+				if (bInvalidClientExists)
+					m_deqConnections.erase(
+						std::remove(m_deqConnections.begin(), m_deqConnections.end(), nullptr), m_deqConnections.end());
 			}
-			else
+
+			// Force server to respond to incoming messages
+			void Update(size_t nMaxMessages = -1, bool bWait = false)
 			{
-				processDisconnection(client);
+				if (bWait) m_qMessagesIn.wait();
+
+				// Process as many messages as you can up to the value
+				// specified
+				size_t nMessageCount = 0;
+				while (nMessageCount < nMaxMessages && !m_qMessagesIn.empty())
+				{
+					// Grab the front message
+					auto msg = m_qMessagesIn.pop_front();
+
+					// Pass to message handler
+					OnMessage(msg.remote, msg.msg);
+
+					nMessageCount++;
+				}
+			}
+
+		protected:
+			// This server class should override thse functions to implement
+			// customised functionality
+
+			// Called when a client connects, you can veto the connection by returning false
+			virtual bool OnClientConnect(std::shared_ptr<connection<T>> client)
+			{
 				return false;
 			}
-		}
 
-		auto MessageAll(const IRC::Message<T>& msg, std::shared_ptr<Connection<T>> ignoredClient = nullptr)
-		{
-			bool deadClientPresent = false;
-
-			for (auto& client : connections)
+			// Called when a client appears to have disconnected
+			virtual void OnClientDisconnect(std::shared_ptr<connection<T>> client)
 			{
-				if (client != ignoredClient && not attemptSending(client, msg))
-					deadClientPresent = true;
+
 			}
 
-			if (deadClientPresent)
+			// Called when a message arrives
+			virtual void OnMessage(std::shared_ptr<connection<T>> client, message<T>& msg)
 			{
-				connections.erase(
-					std::remove(connections.begin(), connections.end(), nullptr), connections.end()
-				);
-			
+
 			}
-		}
 
-		void Update(std::size_t messagesToProcess = std::numeric_limits<std::size_t>::max())
-		{
-			std::size_t processedCount = 0;
 
-			while (processedCount < messagesToProcess && not inMessagesQueue.empty())
-			{
-				auto msg = inMessagesQueue.pop_front();
-				OnMessage(msg.sender, msg.msg);
-				processedCount++;
-			}
-		}
+		protected:
+			// Thread Safe Queue for incoming message packets
+			IRC::ThreadSafeQueue<owned_message<T>> m_qMessagesIn;
 
-	protected:
-		virtual auto OnClientConnect(std::shared_ptr<Connection<T>> client) -> bool { return false; }
-		virtual auto OnClientDisconnect(std::shared_ptr<Connection<T>> client) -> void {}
-		virtual auto OnMessage(std::shared_ptr<Connection<T>> sender, IRC::Message<T>& msg) -> void {}
+			// Container of active validated connections
+			std::deque<std::shared_ptr<connection<T>>> m_deqConnections;
 
-	private:
-		ThreadSafeQueue<IdentifyingMessage<T>> inMessagesQueue;
+			// Order of declaration is important - it is also the order of initialisation
+			boost::asio::io_context m_asioContext;
+			std::thread m_threadContext;
 
-		std::deque<std::shared_ptr<Connection<T>>> connections;
+			// These things need an asio context
+			boost::asio::ip::tcp::acceptor m_asioAcceptor; // Handles new incoming connection attempts...
 
-		std::thread threadContext;
-
-		boost::asio::io_context asioContext;
-		boost::asio::ip::tcp::acceptor asioAcceptor;
-
-		uint32_t IDCounter = 10000;
-	};
+			// Clients will be identified in the "wider system" via an ID
+			uint32_t nIDCounter = 10000;
+		};
+	}
 }

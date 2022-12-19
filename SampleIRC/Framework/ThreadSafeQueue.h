@@ -13,19 +13,19 @@ namespace IRC
 		virtual ~ThreadSafeQueue() { clear(); }
 
 	public:
-		const T& front()
+		auto front() -> const T&
 		{
 			std::scoped_lock lock(queueMutex);
 			return queue.front();
 		}
 
-		const T& back()
+		auto back() -> const T&
 		{
 			std::scoped_lock lock(queueMutex);
 			return queue.back();
 		}
 
-		T pop_front()
+		auto pop_front() -> T
 		{
 			std::scoped_lock lock(queueMutex);
 			auto t = std::move(queue.front());
@@ -33,7 +33,7 @@ namespace IRC
 			return t;
 		}
 
-		T pop_back()
+		auto pop_back() -> T
 		{
 			std::scoped_lock lock(queueMutex);
 			auto t = std::move(queue.back());
@@ -41,7 +41,7 @@ namespace IRC
 			return t;
 		}
 
-		void push_back(const T& item)
+		auto push_back(const T& item) -> void
 		{
 			std::scoped_lock lock(queueMutex);
 			queue.emplace_back(std::move(item));
@@ -50,7 +50,7 @@ namespace IRC
 			cvBlocking.notify_one();
 		}
 
-		void push_front(const T& item)
+		auto push_front(const T& item) -> void
 		{
 			std::scoped_lock lock(queueMutex);
 			queue.emplace_front(std::move(item));
@@ -59,25 +59,25 @@ namespace IRC
 			cvBlocking.notify_one();
 		}
 
-		bool empty()
+		auto empty() -> bool
 		{
 			std::scoped_lock lock(queueMutex);
 			return queue.empty();
 		}
 
-		size_t count()
+		auto count() -> std::size_t
 		{
 			std::scoped_lock lock(queueMutex);
 			return queue.size();
 		}
 
-		void clear()
+		auto clear() -> void
 		{
 			std::scoped_lock lock(queueMutex);
 			queue.clear();
 		}
 
-		void wait()
+		auto wait() -> void
 		{
 			while (empty())
 			{
