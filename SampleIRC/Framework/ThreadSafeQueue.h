@@ -2,84 +2,94 @@
 
 #include "Common.h"
 
-#include <mutex>
-#include <deque>
-
 namespace IRC
 {
-	// Thread safe queue for async processing, implemented via double ended queue
 	template<typename T>
 	class ThreadSafeQueue
 	{
 	public:
 		ThreadSafeQueue() = default;
-		ThreadSafeQueue(const ThreadSafeQueue& tsq) = delete;
+		ThreadSafeQueue(const ThreadSafeQueue<T>&) = delete;
+		virtual ~ThreadSafeQueue() { clear(); }
 
+	public:
 		const T& front()
 		{
-			std::scoped_lock lock(queueMux);
+			std::scoped_lock lock(queueMutex);
 			return queue.front();
 		}
 
 		const T& back()
 		{
-			std::scoped_lock lock(queueMux);
+			std::scoped_lock lock(queueMutex);
 			return queue.back();
+		}
+
+		T pop_front()
+		{
+			std::scoped_lock lock(queueMutex);
+			auto t = std::move(queue.front());
+			queue.pop_front();
+			return t;
+		}
+
+		T pop_back()
+		{
+			std::scoped_lock lock(queueMutex);
+			auto t = std::move(queue.back());
+			queue.pop_back();
+			return t;
 		}
 
 		void push_back(const T& item)
 		{
-			std::scoped_lock lock(queueMux);
-			queue.push_back(std::move(item));
+			std::scoped_lock lock(queueMutex);
+			queue.emplace_back(std::move(item));
+
+			std::unique_lock<std::mutex> ul(blockingMutex);
+			cvBlocking.notify_one();
 		}
 
 		void push_front(const T& item)
 		{
-			std::scoped_lock lock(queueMux);
-			queue.push_front(std::move(item));
+			std::scoped_lock lock(queueMutex);
+			queue.emplace_front(std::move(item));
+
+			std::unique_lock<std::mutex> ul(blockingMutex);
+			cvBlocking.notify_one();
 		}
 
 		bool empty()
 		{
-			std::scoped_lock lock(queueMux);
+			std::scoped_lock lock(queueMutex);
 			return queue.empty();
 		}
 
-		std::size_t count()
+		size_t count()
 		{
-			std::scoped_lock lock(queueMux);
+			std::scoped_lock lock(queueMutex);
 			return queue.size();
 		}
 
 		void clear()
 		{
-			std::scoped_lock lock(queueMux);
+			std::scoped_lock lock(queueMutex);
 			queue.clear();
 		}
 
-		T pop_front()
+		void wait()
 		{
-			std::scoped_lock lock(queueMux);
-			auto item = std::move(queue.front());
-			queue.pop_front();
-			return item;
-		}
-
-		T pop_back()
-		{
-			std::scoped_lock lock(queueMux);
-			auto item = std::move(queue.back());
-			queue.pop_back();
-			return item;
-		}
-
-		virtual ~ThreadSafeQueue()
-		{
-			clear();
+			while (empty())
+			{
+				std::unique_lock<std::mutex> ul(blockingMutex);
+				cvBlocking.wait(ul);
+			}
 		}
 
 	protected:
-		std::mutex queueMux;
+		std::mutex queueMutex;
 		std::deque<T> queue;
+		std::condition_variable cvBlocking;
+		std::mutex blockingMutex;
 	};
 }
