@@ -11,4 +11,7 @@ public:
 	auto MessageAll() -> void;
 
 	virtual auto Run() -> void;
+
+private:
+	auto CheckIncoming() -> void;
 };
