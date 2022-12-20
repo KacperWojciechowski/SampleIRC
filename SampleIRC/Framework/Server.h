@@ -121,35 +121,35 @@ namespace olc
 				std::cout << "[SERVER] Stopped!\n";
 			}
 
-			// ASYNC - Instruct asio to wait for connection
+			// ASYNC - Instruct asio to wait for Connection
 			void WaitForClientConnection()
 			{
 				// Prime context with an instruction to wait until a socket connects. This
 				// is the purpose of an "acceptor" object. It will provide a unique socket
-				// for each incoming connection attempt
+				// for each incoming Connection attempt
 				m_asioAcceptor.async_accept(
 					[this](std::error_code ec, boost::asio::ip::tcp::socket socket)
 					{
-						// Triggered by incoming connection request
+						// Triggered by incoming Connection request
 						if (!ec)
 						{
 							// Display some useful(?) information
 							std::cout << "[SERVER] New Connection: " << socket.remote_endpoint() << "\n";
 
-							// Create a new connection to handle this client 
-							std::shared_ptr<IRC::connection<T>> newconn =
-								std::make_shared<IRC::connection<T>>(IRC::connection<T>::owner::server,
+							// Create a new Connection to handle this client 
+							std::shared_ptr<IRC::Connection<T>> newconn =
+								std::make_shared<IRC::Connection<T>>(IRC::Connection<T>::Owner::server,
 									m_asioContext, std::move(socket), m_qMessagesIn);
 
 
 
-							// Give the user server a chance to deny connection
+							// Give the user server a chance to deny Connection
 							if (OnClientConnect(newconn))
 							{
-								// Connection allowed, so add to container of new connections
+								// Connection allowed, so add to container of new Connections
 								m_deqConnections.push_back(std::move(newconn));
 
-								// And very important! Issue a task to the connection's
+								// And very important! Issue a task to the Connection's
 								// asio context to sit and wait for bytes to arrive!
 								m_deqConnections.back()->ConnectToClient(nIDCounter++);
 
@@ -170,18 +170,18 @@ namespace olc
 						}
 
 						// Prime the asio context with more work - again simply wait for
-						// another connection...
+						// another Connection...
 						WaitForClientConnection();
 					});
 			}
 
 			// Send a message to a specific client
-			void MessageClient(std::shared_ptr<IRC::connection<T>> client, const message<T>& msg)
+			void MessageClient(std::shared_ptr<IRC::Connection<T>> client, const message<T>& msg)
 			{
 				// Check client is legitimate...
 				if (client && client->IsConnected())
 				{
-					// ...and post the message via the connection
+					// ...and post the message via the Connection
 					client->Send(msg);
 				}
 				else
@@ -201,7 +201,7 @@ namespace olc
 			}
 
 			// Send message to all clients
-			void MessageAllClients(const olc::net::message<T>& msg, std::shared_ptr<IRC::connection<T>> pIgnoreClient = nullptr)
+			void MessageAllClients(const olc::net::message<T>& msg, std::shared_ptr<IRC::Connection<T>> pIgnoreClient = nullptr)
 			{
 				bool bInvalidClientExists = false;
 
@@ -258,20 +258,20 @@ namespace olc
 			// This server class should override thse functions to implement
 			// customised functionality
 
-			// Called when a client connects, you can veto the connection by returning false
-			virtual bool OnClientConnect(std::shared_ptr<IRC::connection<T>> client)
+			// Called when a client connects, you can veto the Connection by returning false
+			virtual bool OnClientConnect(std::shared_ptr<IRC::Connection<T>> client)
 			{
 				return false;
 			}
 
 			// Called when a client appears to have disconnected
-			virtual void OnClientDisconnect(std::shared_ptr<IRC::connection<T>> client)
+			virtual void OnClientDisconnect(std::shared_ptr<IRC::Connection<T>> client)
 			{
 
 			}
 
 			// Called when a message arrives
-			virtual void OnMessage(std::shared_ptr<IRC::connection<T>> client, olc::net::message<T>& msg)
+			virtual void OnMessage(std::shared_ptr<IRC::Connection<T>> client, olc::net::message<T>& msg)
 			{
 
 			}
@@ -281,15 +281,15 @@ namespace olc
 			// Thread Safe Queue for incoming message packets
 			IRC::ThreadSafeQueue<olc::net::owned_message<T>> m_qMessagesIn;
 
-			// Container of active validated connections
-			std::deque<std::shared_ptr<IRC::connection<T>>> m_deqConnections;
+			// Container of active validated Connections
+			std::deque<std::shared_ptr<IRC::Connection<T>>> m_deqConnections;
 
 			// Order of declaration is important - it is also the order of initialisation
 			boost::asio::io_context m_asioContext;
 			std::thread m_threadContext;
 
 			// These things need an asio context
-			boost::asio::ip::tcp::acceptor m_asioAcceptor; // Handles new incoming connection attempts...
+			boost::asio::ip::tcp::acceptor m_asioAcceptor; // Handles new incoming Connection attempts...
 
 			// Clients will be identified in the "wider system" via an ID
 			uint32_t nIDCounter = 10000;

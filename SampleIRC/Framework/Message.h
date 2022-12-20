@@ -60,7 +60,7 @@
 namespace IRC
 {
 	template <typename T>
-	class connection;
+	class Connection;
 }
 
 namespace olc
@@ -156,16 +156,16 @@ namespace olc
 
 
 		// An "owned" message is identical to a regular message, but it is associated with
-		// a connection. On a server, the owner would be the client that sent the message, 
+		// a Connection. On a server, the owner would be the client that sent the message, 
 		// on a client the owner would be the server.
 
-		// Forward declare the connection
+		// Forward declare the Connection
 		
 
 		template <typename T>
 		struct owned_message
 		{
-			std::shared_ptr<IRC::connection<T>> remote = nullptr;
+			std::shared_ptr<IRC::Connection<T>> remote = nullptr;
 			message<T> msg;
 
 			// Again, a friendly string maker

@@ -150,7 +150,7 @@ namespace olc
 			// ...but needs a thread of its own to execute its work commands
 			std::thread thrContext;
 			// The client has a single instance of a "connection" object, which handles data transfer
-			std::unique_ptr<IRC::connection<T>> m_connection;
+			std::unique_ptr<IRC::Connection<T>> m_connection;
 
 		private:
 			// This is the thread safe queue of incoming messages from server
