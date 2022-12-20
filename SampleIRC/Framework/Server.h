@@ -13,9 +13,7 @@ namespace IRC
 	public:
 		server_interface(uint16_t port)
 			: m_asioAcceptor(m_asioContext, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
-		{
-
-		}
+		{ }
 
 		virtual ~server_interface()
 		{
@@ -32,11 +30,11 @@ namespace IRC
 			}
 			catch (std::exception& e)
 			{
-				std::cerr << "[SERVER] Exception: " << e.what() << "\n";
+				std::cerr << "[Server] Exception: " << e.what() << "\n";
 				return false;
 			}
 
-			std::cout << "[SERVER] Started!\n";
+			std::cout << "[Server] Started!\n";
 			return true;
 		}
 
@@ -46,7 +44,14 @@ namespace IRC
 
 			if (m_threadContext.joinable()) m_threadContext.join();
 
-			std::cout << "[SERVER] Stopped!\n";
+			std::cout << "[Server] Stopped!\n";
+		}
+
+		auto ProcessAcceptedConnection(std::shared_ptr<IRC::Connection<T>>& newconn)
+		{
+			m_deqConnections.push_back(std::move(newconn));
+			m_deqConnections.back()->ConnectToClient(nIDCounter++);
+			std::cout << "[" << m_deqConnections.back()->GetID() << "] Connection Approved\n";
 		}
 
 		void WaitForClientConnection()
@@ -56,49 +61,50 @@ namespace IRC
 				{
 					if (!ec)
 					{
-						std::cout << "[SERVER] New Connection: " << socket.remote_endpoint() << "\n";
+						std::cout << "[Server] New Connection: " << socket.remote_endpoint() << "\n";
 
 						std::shared_ptr<IRC::Connection<T>> newconn =
 							std::make_shared<IRC::Connection<T>>(IRC::Connection<T>::Owner::server,
 								m_asioContext, std::move(socket), m_qMessagesIn);
 
-
-
 						if (OnClientConnect(newconn))
 						{
-							m_deqConnections.push_back(std::move(newconn));
-
-							m_deqConnections.back()->ConnectToClient(nIDCounter++);
-
-							std::cout << "[" << m_deqConnections.back()->GetID() << "] Connection Approved\n";
+							ProcessAcceptedConnection(newconn);
 						}
 						else
 						{
-							std::cout << "[-----] Connection Denied\n";
-
+							std::cout << "[Server] Connection Denied\n";
 						}
 					}
 					else
 					{
-						std::cout << "[SERVER] New Connection Error: " << ec.message() << "\n";
+						std::cout << "[Server] New Connection Error: " << ec.message() << "\n";
 					}
 
 					WaitForClientConnection();
 				});
 		}
 
+		auto IsClientAlive(std::shared_ptr<IRC::Connection<T>>& client) -> bool
+		{
+			return client && client->IsConnected();
+		}
+
+		void ProcessDisconnection(std::shared_ptr<IRC::Connection<T>>& client)
+		{
+			OnClientDisconnect(client);
+			client.reset();
+		}
+
 		void MessageClient(std::shared_ptr<IRC::Connection<T>> client, const IRC::Message<T>& msg)
 		{
-			if (client && client->IsConnected())
+			if (IsClientAlive(client))
 			{
 				client->Send(msg);
 			}
 			else
 			{
-				OnClientDisconnect(client);
-
-				client.reset();
-
+				ProcessDisconnection(client);
 				m_deqConnections.erase(
 					std::remove(m_deqConnections.begin(), m_deqConnections.end(), client), m_deqConnections.end());
 			}
@@ -106,25 +112,23 @@ namespace IRC
 
 		void MessageAllClients(const IRC::Message<T>& msg, std::shared_ptr<IRC::Connection<T>> pIgnoreClient = nullptr)
 		{
-			bool bInvalidClientExists = false;
+			bool isThereADeadClient = false;
 
 			for (auto& client : m_deqConnections)
 			{
-				if (client && client->IsConnected())
+				if (IsClientAlive(client))
 				{
 					if (client != pIgnoreClient)
 						client->Send(msg);
 				}
 				else
 				{
-					OnClientDisconnect(client);
-					client.reset();
-
-					bInvalidClientExists = true;
+					ProcessDisconnection(client);
+					isThereADeadClient = true;
 				}
 			}
 
-			if (bInvalidClientExists)
+			if (isThereADeadClient)
 				m_deqConnections.erase(
 					std::remove(m_deqConnections.begin(), m_deqConnections.end(), nullptr), m_deqConnections.end());
 		}
