@@ -12,7 +12,7 @@ namespace IRC
 	{
 	public:
 		server_interface(uint16_t port)
-			: m_asioAcceptor(m_asioContext, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
+			: asioAcceptor(asioContext, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
 		{ }
 
 		virtual ~server_interface()
@@ -26,7 +26,7 @@ namespace IRC
 			{
 				WaitForClientConnection();
 
-				m_threadContext = std::thread([this]() { m_asioContext.run(); });
+				contextThread = std::thread([this]() { asioContext.run(); });
 			}
 			catch (std::exception& e)
 			{
@@ -40,36 +40,38 @@ namespace IRC
 
 		void Stop()
 		{
-			m_asioContext.stop();
+			asioContext.stop();
 
-			if (m_threadContext.joinable()) m_threadContext.join();
+			if (contextThread.joinable()) contextThread.join();
 
 			std::cout << "[Server] Stopped!\n";
 		}
 
-		auto ProcessAcceptedConnection(std::shared_ptr<IRC::Connection<T>>& newconn)
+		auto ProcessAcceptedConnection(std::shared_ptr<IRC::Connection<T>>& newConnection)
 		{
-			m_deqConnections.push_back(std::move(newconn));
-			m_deqConnections.back()->ConnectToClient(nIDCounter++);
-			std::cout << "[" << m_deqConnections.back()->GetID() << "] Connection Approved\n";
+			connections.push_back(std::move(newConnection));
+			connections.back()->ConnectToClient(IDCounter++);
+			std::cout << "[" << connections.back()->GetID() << "] Connection Approved\n";
 		}
 
 		void WaitForClientConnection()
 		{
-			m_asioAcceptor.async_accept(
+			asioAcceptor.async_accept(
 				[this](std::error_code ec, boost::asio::ip::tcp::socket socket)
 				{
 					if (!ec)
 					{
 						std::cout << "[Server] New Connection: " << socket.remote_endpoint() << "\n";
 
-						std::shared_ptr<IRC::Connection<T>> newconn =
+						std::shared_ptr<IRC::Connection<T>> newConnection =
 							std::make_shared<IRC::Connection<T>>(IRC::Connection<T>::Owner::server,
-								m_asioContext, std::move(socket), m_qMessagesIn);
+																 asioContext, 
+																 std::move(socket), 
+																 inQueue);
 
-						if (OnClientConnect(newconn))
+						if (OnClientConnect(newConnection))
 						{
-							ProcessAcceptedConnection(newconn);
+							ProcessAcceptedConnection(newConnection);
 						}
 						else
 						{
@@ -105,8 +107,8 @@ namespace IRC
 			else
 			{
 				ProcessDisconnection(client);
-				m_deqConnections.erase(
-					std::remove(m_deqConnections.begin(), m_deqConnections.end(), client), m_deqConnections.end());
+				connections.erase(
+					std::remove(connections.begin(), connections.end(), client), connections.end());
 			}
 		}
 
@@ -114,7 +116,7 @@ namespace IRC
 		{
 			bool isThereADeadClient = false;
 
-			for (auto& client : m_deqConnections)
+			for (auto& client : connections)
 			{
 				if (IsClientAlive(client))
 				{
@@ -129,18 +131,18 @@ namespace IRC
 			}
 
 			if (isThereADeadClient)
-				m_deqConnections.erase(
-					std::remove(m_deqConnections.begin(), m_deqConnections.end(), nullptr), m_deqConnections.end());
+				connections.erase(
+					std::remove(connections.begin(), connections.end(), nullptr), connections.end());
 		}
 
 		void Update(size_t nMaxMessages = -1, bool bWait = false)
 		{
-			if (bWait) m_qMessagesIn.wait();
+			if (bWait) inQueue.wait();
 
 			size_t nMessageCount = 0;
-			while (nMessageCount < nMaxMessages && !m_qMessagesIn.empty())
+			while (nMessageCount < nMaxMessages && !inQueue.empty())
 			{
-				auto msg = m_qMessagesIn.pop_front();
+				auto msg = inQueue.pop_front();
 
 				OnMessage(msg.remote, msg.msg);
 
@@ -155,15 +157,15 @@ namespace IRC
 
 
 	protected:
-		IRC::ThreadSafeQueue<IRC::IdentifyingMessage<T>> m_qMessagesIn;
+		IRC::ThreadSafeQueue<IRC::IdentifyingMessage<T>> inQueue;
 
-		std::deque<std::shared_ptr<IRC::Connection<T>>> m_deqConnections;
+		std::deque<std::shared_ptr<IRC::Connection<T>>> connections;
 
-		boost::asio::io_context m_asioContext;
-		std::thread m_threadContext;
+		boost::asio::io_context asioContext;
+		std::thread contextThread;
 
-		boost::asio::ip::tcp::acceptor m_asioAcceptor;
+		boost::asio::ip::tcp::acceptor asioAcceptor;
 
-		uint32_t nIDCounter = 10000;
+		uint32_t IDCounter = 10000;
 	};
 }
