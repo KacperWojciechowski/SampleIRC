@@ -29,12 +29,9 @@ namespace IRC
 		{
 			static_assert(std::is_standard_layout<DataType>::value, "Data is too complex to be pushed into vector");
 
-			size_t i = msg.body.size();
-
+			size_t prevSize = msg.body.size();
 			msg.body.resize(msg.body.size() + sizeof(DataType));
-
-			std::memcpy(msg.body.data() + i, &data, sizeof(DataType));
-
+			std::memcpy(msg.body.data() + prevSize, &data, sizeof(DataType));
 			msg.header.size = msg.size();
 
 			return msg;
@@ -45,12 +42,9 @@ namespace IRC
 		{
 			static_assert(std::is_standard_layout<DataType>::value, "Data is too complex to be pulled from vector");
 
-			size_t i = msg.body.size() - sizeof(DataType);
-
-			std::memcpy(&data, msg.body.data() + i, sizeof(DataType));
-
-			msg.body.resize(i);
-
+			size_t newSize = msg.body.size() - sizeof(DataType);
+			std::memcpy(&data, msg.body.data() + newSize, sizeof(DataType));
+			msg.body.resize(newSize);
 			msg.header.size = msg.size();
 
 			return msg;
