@@ -20,10 +20,10 @@ namespace IRC
 		Connection(Owner parent, 
 				   boost::asio::io_context& _asioContext, 
 				   boost::asio::ip::tcp::socket _socket, 
-				   IRC::ThreadSafeQueue<olc::net::owned_message<T>>& qIn)
+				   IRC::ThreadSafeQueue<IRC::IdentifyingMessage<T>>& queueIn)
 			: asioContext(_asioContext), 
 			socket(std::move(_socket)), 
-			inQueue(qIn),
+			inQueue(queueIn),
 			owner(parent)
 		{
 		}
@@ -80,7 +80,7 @@ namespace IRC
 
 		}
 
-		auto Send(const olc::net::message<T>& msg) -> void
+		auto Send(const IRC::Message<T>& msg) -> void
 		{
 			boost::asio::post(asioContext,
 				[this, msg]()
@@ -97,7 +97,7 @@ namespace IRC
 	private:
 		auto WriteHeader() -> void
 		{
-			boost::asio::async_write(socket, boost::asio::buffer(&outQueue.front().header, sizeof(olc::net::message_header<T>)),
+			boost::asio::async_write(socket, boost::asio::buffer(&outQueue.front().header, sizeof(IRC::Header<T>)),
 				[this](std::error_code ec, std::size_t length)
 				{
 					if (!ec)
@@ -148,7 +148,7 @@ namespace IRC
 
 		auto ReadHeader() -> void
 		{
-			boost::asio::async_read(socket, boost::asio::buffer(&tempMsg.header, sizeof(olc::net::message_header<T>)),
+			boost::asio::async_read(socket, boost::asio::buffer(&tempMsg.header, sizeof(IRC::Header<T>)),
 				[this](std::error_code ec, std::size_t length)
 				{
 					if (!ec)
@@ -202,10 +202,10 @@ namespace IRC
 		boost::asio::ip::tcp::socket socket;
 		boost::asio::io_context& asioContext;
 
-		IRC::ThreadSafeQueue<olc::net::message<T>> outQueue;
-		IRC::ThreadSafeQueue<olc::net::owned_message<T>>& inQueue;
+		IRC::ThreadSafeQueue<IRC::Message<T>> outQueue;
+		IRC::ThreadSafeQueue<IRC::IdentifyingMessage<T>>& inQueue;
 
-		olc::net::message<T> tempMsg;
+		IRC::Message<T> tempMsg;
 
 		Owner owner = Owner::server;
 

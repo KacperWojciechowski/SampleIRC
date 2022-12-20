@@ -85,7 +85,7 @@ namespace olc
 					boost::asio::ip::tcp::resolver::results_type endpoints = resolver.resolve(host, std::to_string(port));
 
 					// Create connection
-					m_connection = std::make_unique<connection<T>>(connection<T>::owner::client, m_context, boost::asio::ip::tcp::socket(m_context), m_qMessagesIn);
+					m_connection = std::make_unique<IRC::Connection<T>>(IRC::Connection<T>::Owner::client, m_context, boost::asio::ip::tcp::socket(m_context), m_qMessagesIn);
 
 					// Tell the connection object to connect to server
 					m_connection->ConnectToServer(endpoints);
@@ -132,14 +132,14 @@ namespace olc
 
 		public:
 			// Send message to server
-			void Send(const message<T>& msg)
+			void Send(const IRC::Message<T>& msg)
 			{
 				if (IsConnected())
 					m_connection->Send(msg);
 			}
 
-			// Retrieve queue of messages from server
-			IRC::ThreadSafeQueue<owned_message<T>>& Incoming()
+			// Retrieve queue of IRC::Messages from server
+			IRC::ThreadSafeQueue<IRC::IdentifyingMessage<T>>& Incoming()
 			{
 				return m_qMessagesIn;
 			}
@@ -153,8 +153,8 @@ namespace olc
 			std::unique_ptr<IRC::Connection<T>> m_connection;
 
 		private:
-			// This is the thread safe queue of incoming messages from server
-			IRC::ThreadSafeQueue<owned_message<T>> m_qMessagesIn;
+			// This is the thread safe queue of incoming IRC::Messages from server
+			IRC::ThreadSafeQueue<IRC::IdentifyingMessage<T>> m_qMessagesIn;
 		};
 	}
 }

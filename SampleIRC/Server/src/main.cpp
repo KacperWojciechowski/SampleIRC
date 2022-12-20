@@ -23,7 +23,7 @@ public:
 protected:
 	virtual bool OnClientConnect(std::shared_ptr<IRC::Connection<CustomMsgTypes>> client)
 	{
-		olc::net::message<CustomMsgTypes> msg;
+		IRC::Message<CustomMsgTypes> msg;
 		msg.header.id = CustomMsgTypes::ServerAccept;
 		client->Send(msg);
 		return true;
@@ -36,7 +36,7 @@ protected:
 	}
 
 	// Called when a message arrives
-	virtual void OnMessage(std::shared_ptr<IRC::Connection<CustomMsgTypes>> client, olc::net::message<CustomMsgTypes>& msg)
+	virtual void OnMessage(std::shared_ptr<IRC::Connection<CustomMsgTypes>> client, IRC::Message<CustomMsgTypes>& msg)
 	{
 		switch (msg.header.id)
 		{
@@ -54,7 +54,7 @@ protected:
 			std::cout << "[" << client->GetID() << "]: Message All\n";
 
 			// Construct a new message and send it to all clients
-			olc::net::message<CustomMsgTypes> msg;
+			IRC::Message<CustomMsgTypes> msg;
 			msg.header.id = CustomMsgTypes::ServerMessage;
 			msg << client->GetID();
 			MessageAllClients(msg, client);

@@ -176,7 +176,7 @@ namespace olc
 			}
 
 			// Send a message to a specific client
-			void MessageClient(std::shared_ptr<IRC::Connection<T>> client, const message<T>& msg)
+			void MessageClient(std::shared_ptr<IRC::Connection<T>> client, const IRC::Message<T>& msg)
 			{
 				// Check client is legitimate...
 				if (client && client->IsConnected())
@@ -201,7 +201,7 @@ namespace olc
 			}
 
 			// Send message to all clients
-			void MessageAllClients(const olc::net::message<T>& msg, std::shared_ptr<IRC::Connection<T>> pIgnoreClient = nullptr)
+			void MessageAllClients(const IRC::Message<T>& msg, std::shared_ptr<IRC::Connection<T>> pIgnoreClient = nullptr)
 			{
 				bool bInvalidClientExists = false;
 
@@ -271,7 +271,7 @@ namespace olc
 			}
 
 			// Called when a message arrives
-			virtual void OnMessage(std::shared_ptr<IRC::Connection<T>> client, olc::net::message<T>& msg)
+			virtual void OnMessage(std::shared_ptr<IRC::Connection<T>> client, IRC::Message<T>& msg)
 			{
 
 			}
@@ -279,7 +279,7 @@ namespace olc
 
 		protected:
 			// Thread Safe Queue for incoming message packets
-			IRC::ThreadSafeQueue<olc::net::owned_message<T>> m_qMessagesIn;
+			IRC::ThreadSafeQueue<IRC::IdentifyingMessage<T>> m_qMessagesIn;
 
 			// Container of active validated Connections
 			std::deque<std::shared_ptr<IRC::Connection<T>>> m_deqConnections;
