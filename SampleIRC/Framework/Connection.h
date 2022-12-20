@@ -17,7 +17,6 @@ namespace IRC
 			client
 		};
 
-	public:
 		Connection(Owner parent, 
 				   boost::asio::io_context& _asioContext, 
 				   boost::asio::ip::tcp::socket _socket, 
@@ -32,13 +31,12 @@ namespace IRC
 		virtual ~Connection()
 		{}
 
-		uint32_t GetID() const
+		auto GetID() const -> uint32_t
 		{
 			return id;
 		}
 
-	public:
-		void ConnectToClient(uint32_t uid = 0)
+		auto ConnectToClient(uint32_t uid = 0) -> void
 		{
 			if (owner == Owner::server)
 			{
@@ -50,7 +48,7 @@ namespace IRC
 			}
 		}
 
-		void ConnectToServer(const boost::asio::ip::tcp::resolver::results_type& endpoints)
+		auto ConnectToServer(const boost::asio::ip::tcp::resolver::results_type& endpoints) -> void
 		{
 			if (owner == Owner::client)
 			{
@@ -66,41 +64,38 @@ namespace IRC
 		}
 
 
-		void Disconnect()
+		auto Disconnect() -> void
 		{
 			if (IsConnected())
 				boost::asio::post(asioContext, [this]() { socket.close(); });
 		}
 
-		bool IsConnected() const
+		auto IsConnected() const -> bool
 		{
 			return socket.is_open();
 		}
 
-		void StartListening()
+		auto StartListening() -> void
 		{
 
 		}
 
-	public:
-		void Send(const olc::net::message<T>& msg)
+		auto Send(const olc::net::message<T>& msg) -> void
 		{
 			boost::asio::post(asioContext,
 				[this, msg]()
 				{
-					bool bWritingMessage = !outQueue.empty();
+					bool outQueueIdle = outQueue.empty();
 					outQueue.push_back(msg);
-					if (!bWritingMessage)
+					if (outQueueIdle)
 					{
 						WriteHeader();
 					}
 				});
 		}
 
-
-
 	private:
-		void WriteHeader()
+		auto WriteHeader() -> void
 		{
 			boost::asio::async_write(socket, boost::asio::buffer(&outQueue.front().header, sizeof(olc::net::message_header<T>)),
 				[this](std::error_code ec, std::size_t length)
@@ -129,7 +124,7 @@ namespace IRC
 				});
 		}
 
-		void WriteBody()
+		auto WriteBody() -> void
 		{
 			boost::asio::async_write(socket, boost::asio::buffer(outQueue.front().body.data(), outQueue.front().body.size()),
 				[this](std::error_code ec, std::size_t length)
@@ -151,7 +146,7 @@ namespace IRC
 				});
 		}
 
-		void ReadHeader()
+		auto ReadHeader() -> void
 		{
 			boost::asio::async_read(socket, boost::asio::buffer(&tempMsg.header, sizeof(olc::net::message_header<T>)),
 				[this](std::error_code ec, std::size_t length)
@@ -165,7 +160,7 @@ namespace IRC
 						}
 						else
 						{
-							AddToIncomingMessageQueue();
+							PushIncoming();
 						}
 					}
 					else
@@ -176,14 +171,14 @@ namespace IRC
 				});
 		}
 
-		void ReadBody()
+		auto ReadBody() -> void
 		{
 			boost::asio::async_read(socket, boost::asio::buffer(tempMsg.body.data(), tempMsg.body.size()),
 				[this](std::error_code ec, std::size_t length)
 				{
 					if (!ec)
 					{
-						AddToIncomingMessageQueue();
+						PushIncoming();
 					}
 					else
 					{
@@ -193,7 +188,7 @@ namespace IRC
 				});
 		}
 
-		void AddToIncomingMessageQueue()
+		auto PushIncoming() -> void
 		{
 			if (owner == Owner::server)
 				inQueue.push_back({ this->shared_from_this(), tempMsg });
