@@ -8,14 +8,14 @@
 namespace IRC
 {
 	template<typename T>
-	class server_interface
+	class IServer
 	{
 	public:
-		server_interface(uint16_t port)
+		IServer(uint16_t port)
 			: asioAcceptor(asioContext, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
 		{ }
 
-		virtual ~server_interface()
+		virtual ~IServer()
 		{
 			Stop();
 		}

@@ -1,5 +1,5 @@
 ﻿#include <iostream>
-#include <Framework/olc_net.h>
+#include <Framework/Client.h>
 
 enum class CustomMsgTypes : uint32_t
 {
@@ -12,15 +12,14 @@ enum class CustomMsgTypes : uint32_t
 
 
 
-class CustomClient : public olc::net::client_interface<CustomMsgTypes>
+class CustomClient : public IRC::IClient<CustomMsgTypes>
 {
 public:
 	void PingServer()
 	{
-		olc::net::message<CustomMsgTypes> msg;
+		IRC::Message<CustomMsgTypes> msg;
 		msg.header.id = CustomMsgTypes::ServerPing;
 
-		// Caution with this...
 		std::chrono::system_clock::time_point timeNow = std::chrono::system_clock::now();
 
 		msg << timeNow;
@@ -29,7 +28,7 @@ public:
 
 	void MessageAll()
 	{
-		olc::net::message<CustomMsgTypes> msg;
+		IRC::Message<CustomMsgTypes> msg;
 		msg.header.id = CustomMsgTypes::MessageAll;
 		Send(msg);
 	}
