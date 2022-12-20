@@ -57,6 +57,12 @@
 #pragma once
 #include "Common.h"
 
+namespace IRC
+{
+	template <typename T>
+	class connection;
+}
+
 namespace olc
 {
 	namespace net
@@ -154,13 +160,12 @@ namespace olc
 		// on a client the owner would be the server.
 
 		// Forward declare the connection
-		template <typename T>
-		class connection;
+		
 
 		template <typename T>
 		struct owned_message
 		{
-			std::shared_ptr<connection<T>> remote = nullptr;
+			std::shared_ptr<IRC::connection<T>> remote = nullptr;
 			message<T> msg;
 
 			// Again, a friendly string maker

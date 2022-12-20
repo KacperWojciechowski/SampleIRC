@@ -137,8 +137,8 @@ namespace olc
 							std::cout << "[SERVER] New Connection: " << socket.remote_endpoint() << "\n";
 
 							// Create a new connection to handle this client 
-							std::shared_ptr<connection<T>> newconn =
-								std::make_shared<connection<T>>(connection<T>::owner::server,
+							std::shared_ptr<IRC::connection<T>> newconn =
+								std::make_shared<IRC::connection<T>>(IRC::connection<T>::owner::server,
 									m_asioContext, std::move(socket), m_qMessagesIn);
 
 
@@ -176,7 +176,7 @@ namespace olc
 			}
 
 			// Send a message to a specific client
-			void MessageClient(std::shared_ptr<connection<T>> client, const message<T>& msg)
+			void MessageClient(std::shared_ptr<IRC::connection<T>> client, const message<T>& msg)
 			{
 				// Check client is legitimate...
 				if (client && client->IsConnected())
@@ -201,7 +201,7 @@ namespace olc
 			}
 
 			// Send message to all clients
-			void MessageAllClients(const message<T>& msg, std::shared_ptr<connection<T>> pIgnoreClient = nullptr)
+			void MessageAllClients(const olc::net::message<T>& msg, std::shared_ptr<IRC::connection<T>> pIgnoreClient = nullptr)
 			{
 				bool bInvalidClientExists = false;
 
@@ -259,19 +259,19 @@ namespace olc
 			// customised functionality
 
 			// Called when a client connects, you can veto the connection by returning false
-			virtual bool OnClientConnect(std::shared_ptr<connection<T>> client)
+			virtual bool OnClientConnect(std::shared_ptr<IRC::connection<T>> client)
 			{
 				return false;
 			}
 
 			// Called when a client appears to have disconnected
-			virtual void OnClientDisconnect(std::shared_ptr<connection<T>> client)
+			virtual void OnClientDisconnect(std::shared_ptr<IRC::connection<T>> client)
 			{
 
 			}
 
 			// Called when a message arrives
-			virtual void OnMessage(std::shared_ptr<connection<T>> client, message<T>& msg)
+			virtual void OnMessage(std::shared_ptr<IRC::connection<T>> client, olc::net::message<T>& msg)
 			{
 
 			}
@@ -279,10 +279,10 @@ namespace olc
 
 		protected:
 			// Thread Safe Queue for incoming message packets
-			IRC::ThreadSafeQueue<owned_message<T>> m_qMessagesIn;
+			IRC::ThreadSafeQueue<olc::net::owned_message<T>> m_qMessagesIn;
 
 			// Container of active validated connections
-			std::deque<std::shared_ptr<connection<T>>> m_deqConnections;
+			std::deque<std::shared_ptr<IRC::connection<T>>> m_deqConnections;
 
 			// Order of declaration is important - it is also the order of initialisation
 			boost::asio::io_context m_asioContext;
