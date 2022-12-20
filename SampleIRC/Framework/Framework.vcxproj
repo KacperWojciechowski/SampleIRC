@@ -23,7 +23,6 @@
     <ClInclude Include="Common.h" />
     <ClInclude Include="Connection.h" />
     <ClInclude Include="Message.h" />
-    <ClInclude Include="olc_net.h" />
     <ClInclude Include="Server.h" />
     <ClInclude Include="ThreadSafeQueue.h" />
   </ItemGroup>

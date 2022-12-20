@@ -1,5 +1,5 @@
 ﻿#include <iostream>
-#include <Framework/olc_net.h>
+#include <Framework/Server.h>
 
 enum class CustomMsgTypes : uint32_t
 {
