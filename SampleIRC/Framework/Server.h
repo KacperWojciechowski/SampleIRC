@@ -116,16 +116,16 @@ namespace IRC
 		{
 			bool isThereADeadClient = false;
 
-			for (auto& client : connections)
+			for (auto itr = connections.rbegin(); itr != connections.rend(); itr++)
 			{
-				if (IsClientAlive(client))
+				if (IsClientAlive(*itr))
 				{
-					if (client != pIgnoreClient)
-						client->Send(msg);
+					if ((*itr) != pIgnoreClient)
+						(*itr)->Send(msg);
 				}
 				else
 				{
-					ProcessDisconnection(client);
+					ProcessDisconnection(*itr);
 					isThereADeadClient = true;
 				}
 			}

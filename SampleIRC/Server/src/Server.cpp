@@ -7,6 +7,8 @@ bool IRCServer::OnClientConnect(std::shared_ptr<IRC::Connection<IRCMessageType>>
 {
 	IRC::Message<IRCMessageType> msg;
 	msg.header.id = IRCMessageType::ServerAccept;
+	client->SetID(IDCounter++);
+	msg << client->GetID();
 	client->Send(msg);
 	return true;
 }
@@ -28,7 +30,7 @@ auto GetTimestamp() -> Timestamp
 auto FormatTimestamp() -> std::string
 {
 	auto timestamp = GetTimestamp();
-	return std::format("[%d:%d] ", timestamp.hour, timestamp.minutes);
+	return std::format("[{}:{}] ", timestamp.hour, timestamp.minutes);
 }
 
 void IRCServer::OnClientDisconnect(std::shared_ptr<IRC::Connection<IRCMessageType>> client)
@@ -40,7 +42,7 @@ auto IRCServer::ProcessMessageAll(std::shared_ptr<IRC::Connection<IRCMessageType
 {
 	msg.header.id = IRCMessageType::ServerMessage;
 	msg << client->GetID();
-	MessageAllClients(msg, client);
+	MessageAllClients(msg, nullptr);
 }
 
 void IRCServer::OnMessage(std::shared_ptr<IRC::Connection<IRCMessageType>> client, IRC::Message<IRCMessageType>& msg)
@@ -60,6 +62,14 @@ void IRCServer::OnMessage(std::shared_ptr<IRC::Connection<IRCMessageType>> clien
 		ProcessMessageAll(client, msg);
 	
 		break;
+
+	case IRCMessageType::ServerMessage:
+
+		std::cout << FormatTimestamp() << "[Server] <" << client->GetID() << ">: Server Message\n";
+		ProcessMessageAll(client, msg);
+
+		break;
+
 	}
 }
 

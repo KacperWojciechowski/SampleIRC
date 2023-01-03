@@ -36,13 +36,17 @@ namespace IRC
 			return id;
 		}
 
+		auto SetID(uint32_t ID) -> void
+		{
+			id = ID;
+		}
+
 		auto ConnectToClient(uint32_t uid = 0) -> void
 		{
 			if (owner == Owner::server)
 			{
 				if (socket.is_open())
 				{
-					id = uid;
 					ReadHeader();
 				}
 			}
