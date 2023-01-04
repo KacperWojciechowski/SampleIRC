@@ -58,7 +58,7 @@ void IRCServer::OnMessage(std::shared_ptr<IRC::Connection<IRCMessageType>> clien
 
 	case IRCMessageType::MessageAll:
 	
-		std::cout << FormatTimestamp() << "[Server] <" << client->GetID() << ">: Message All\n";
+		printf("%s[Server] <%d>: Message All\n", FormatTimestamp().c_str(), client->GetID());
 		ProcessMessageAll(client, msg);
 	
 		break;

@@ -51,7 +51,7 @@ namespace IRC
 		{
 			connections.push_back(std::move(newConnection));
 			connections.back()->ConnectToClient(IDCounter++);
-			std::cout << "[" << connections.back()->GetID() << "] Connection Approved\n";
+			printf("[%d] Connection Approved\n", connections.back()->GetID());
 		}
 
 		void WaitForClientConnection()
@@ -61,7 +61,7 @@ namespace IRC
 				{
 					if (!ec)
 					{
-						std::cout << "[Server] New Connection: " << socket.remote_endpoint() << "\n";
+						printf("[Server] New Connection: %s\n", socket.remote_endpoint().address().to_string().c_str());
 
 						std::shared_ptr<IRC::Connection<T>> newConnection =
 							std::make_shared<IRC::Connection<T>>(IRC::Connection<T>::Owner::server,

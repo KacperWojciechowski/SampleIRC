@@ -1,6 +1,7 @@
 #include "LoadTestClient.h"
 
 #include <iostream>
+#include <thread>
 
 int IRCLoadClient::instanceCounter = 0;
 
@@ -59,15 +60,21 @@ auto IRCLoadClient::CheckIncoming() -> void
 			break;
 
 		case IRCMessageType::ServerPing:
+			std::cout << "Server ping\n";
 			ProcessPing(msg);
 			break;
 
 		case IRCMessageType::MessageAll:
 			ProcessServerMessage(msg);
+			std::cout << "Message all\n";
 			break;
 
 		case IRCMessageType::ServerMessage:
 			ProcessServerMessage(msg);
+			std::cout << "Server message\n";
+			break;
+		default:
+			std::cout << "enum = " << static_cast<int>(msg.header.id) << "\n";
 			break;
 		}
 	}
@@ -94,7 +101,7 @@ auto IRCLoadClient::AppendLog() -> void
 {
 	std::string line = std::format("{},{},{}\n", instanceCounter,
 											     messageCounter,
-											     std::chrono::duration<double>(receivingTimepoint - sendingTimepoint).count() * 1000000.0);
+											     std::chrono::duration<double>(receivingTimepoint - sendingTimepoint).count() * 1000.0);
 	logFile << line;
 }
 
@@ -122,6 +129,7 @@ auto IRCLoadClient::Run() -> void
 			{
 				received = false;
 				AppendLog();
+				std::this_thread::sleep_for(std::chrono::milliseconds(50));
 				SendDummyMessage();
 			}
 		}

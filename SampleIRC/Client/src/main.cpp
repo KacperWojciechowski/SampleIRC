@@ -21,13 +21,14 @@ int main()
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 	std::cout << counter << '\n';
-	for (int i = 0; i < 1000; i++)
+	
+	for (int i = 1; i < 100; i++)
 	{
 		clients.emplace_back(std::make_shared<IRCLoadClient>(stopFlag, false));
 		counter++;
 		std::cout << counter << "\n";
 		clients[counter - 1]->Connect("127.0.0.1", 60000);
-		threads.emplace_back([&clients, counter]() {clients[counter-1]->Run(); });
+		threads.emplace_back([&clients, i]() {clients[i]->Run(); });
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	}
 

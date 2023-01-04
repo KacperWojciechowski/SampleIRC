@@ -122,7 +122,7 @@ namespace IRC
 					}
 					else
 					{
-						std::cout << "[" << id << "] Write Header Fail.\n";
+						printf("[%d] Write Header Fail.\n", id);
 						socket.close();
 					}
 				});
@@ -144,7 +144,7 @@ namespace IRC
 					}
 					else
 					{
-						std::cout << "[" << id << "] Write Body Fail.\n";
+						printf("[%d] Write Body Fail.\n", id);
 						socket.close();
 					}
 				});
@@ -169,7 +169,7 @@ namespace IRC
 					}
 					else
 					{
-						std::cout << "[" << id << "] Read Header Fail.\n";
+						printf("[%d] Read Header Fail.\n", id);
 						socket.close();
 					}
 				});
@@ -186,7 +186,7 @@ namespace IRC
 					}
 					else
 					{
-						std::cout << "[" << id << "] Read Body Fail.\n";
+						printf("[%d] Read Body Fail.\n", id);
 						socket.close();
 					}
 				});
