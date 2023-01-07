@@ -2,7 +2,6 @@
 #include <thread>
 #include <memory>
 
-#include "Client.h"
 #include "LoadTestClient.h"
 
 int main()
